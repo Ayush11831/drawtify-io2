@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Undo2, Redo2, Save, Trash2, PanelLeft, Download, ZoomIn, ZoomOut, Move, Grid3X3, Hand, Circle, Minus, Square } from 'lucide-react';
 import './App.css';
+import { isPointInRectangle, isPointInEllipse, isPointOnLine } from './utils/drawingUtils';
 import Canvas from './components/Canvas';
 import Toolbar from './components/Toolbar';
 import Sidebar from './components/Sidebar';
@@ -282,7 +283,6 @@ function App() {
             </button>
           </div>
 
-          {/* Background color controls */}
           <div className="toolbar-group mini-group">
             <button 
               className={`icon-button dark-icon-button ${bgColor === '#1e1e28' ? 'active' : ''}`} 
@@ -298,7 +298,6 @@ function App() {
             />
           </div>
 
-          {/* Pattern controls */}
           <div className="toolbar-group mini-group">
             <button 
               className={`icon-button dark-icon-button ${pattern === 'grid' ? 'active' : ''}`} 
@@ -329,8 +328,6 @@ function App() {
               <Square size={16} />
             </button>
           </div>
-
-
 
           <button 
             className={`icon-button dark-icon-button ${showSidebar ? 'active' : ''}`} 
@@ -376,25 +373,22 @@ function App() {
           ref={canvasContainerRef}
           className="canvas-container dark-canvas-container infinite-canvas"
           style={{ 
-            cursor: isPanning ? 'grabbing' : (tool === 'hand' ? 'grab' : 'default')
+            cursor: isPanning ? 'grabbing' : (tool === 'hand' ? 'grab' : 'default'),
+            // IMPORTANT: Ensure the container is full width/height and relative
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            overflow: 'hidden'
           }}
           onMouseDown={startPan}
           onMouseMove={handlePan}
           onMouseUp={stopPan}
           onMouseLeave={stopPan}
         >
-          <div
-            className="canvas-transform-wrapper"
-            style={{
-              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
-              transformOrigin: '0 0',
-              width: '100%',
-              height: '100%',
-              position: 'absolute',
-              top: 0,
-              left: 0
-            }}
-          >
+            {/* FIX: Removed the <div className="canvas-transform-wrapper"> 
+                and its CSS transforms. The Canvas component is now a direct
+                child and stays fixed in the DOM.
+            */}
             <Canvas
               ref={canvasRef}
               elements={visibleElements}
@@ -408,7 +402,6 @@ function App() {
               bgColor={bgColor}
               pattern={pattern}
             />
-          </div>
         </div>
 
         {showSidebar && (

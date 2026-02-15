@@ -84,3 +84,40 @@ export const downloadAsJSON = (elements, filename = 'drawing.json') => {
 export const generateSeed = () => {
   return Math.random() * 10000;
 };
+
+export const isPointOnLine = (x, y, element) => {
+  const { x1, y1, x2, y2 } = element;
+  // Calculate distance from point to line segment
+  const a = x - x1;
+  const b = y - y1;
+  const c = x2 - x1;
+  const d = y2 - y1;
+
+  const dot = a * c + b * d;
+  const lenSq = c * c + d * d;
+  let param = -1;
+  
+  if (lenSq !== 0) // in case of 0 length line
+      param = dot / lenSq;
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  }
+  else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  }
+  else {
+    xx = x1 + param * c;
+    yy = y1 + param * d;
+  }
+
+  const dx = x - xx;
+  const dy = y - yy;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  return distance < 10; // 10px tolerance for easier selection
+};
