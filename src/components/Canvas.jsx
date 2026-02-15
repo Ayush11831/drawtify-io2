@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react';
 import rough from 'roughjs';
 
-const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, showGrid, panOffset, zoom }, ref) => {
+const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, showGrid, panOffset, zoom,bgColor, pattern }, ref) => {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const roughCanvasRef = useRef(null);
@@ -53,53 +53,125 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
   }, []);
 
   // Draw everything
-  const drawCanvas = () => {
-    const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    const roughCanvas = roughCanvasRef.current;
+const drawCanvas = () => {
+  const canvas = canvasRef.current;
+  const ctx = ctxRef.current;
+  const roughCanvas = roughCanvasRef.current;
 
-    if (!ctx || !roughCanvas) return;
+  if (!ctx || !roughCanvas) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.scale(2, 2);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.scale(2, 2);
 
-    if (showGrid) {
-      drawInfiniteGrid(ctx, canvas.width / 2, canvas.height / 2, panOffset, zoom);
+  // Fill background
+  ctx.save();
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(-panOffset.x - 1000, -panOffset.y - 1000, 
+               canvas.width / 2 + 2000, canvas.height / 2 + 2000);
+  ctx.restore();
+
+  // Draw pattern based on selection
+  if (pattern !== 'none') {
+    switch(pattern) {
+      case 'grid':
+        drawInfiniteGrid(ctx, canvas.width / 2, canvas.height / 2, panOffset, zoom);
+        break;
+      case 'dots':
+        drawInfiniteDots(ctx, canvas.width / 2, canvas.height / 2, panOffset, zoom);
+        break;
+      case 'lines':
+        drawInfiniteLines(ctx, canvas.width / 2, canvas.height / 2, panOffset, zoom);
+        break;
+      default:
+        break;
     }
+  }
 
-    elements.forEach(element => {
-      drawElement(element, roughCanvas, ctx, panOffset, zoom);
-    });
+  elements.forEach(element => {
+    drawElement(element, roughCanvas, ctx, panOffset, zoom);
+  });
 
-    ctx.restore();
-  };
+  ctx.restore();
+};
 
-  const drawInfiniteGrid = (ctx, width, height, panOffset, zoom) => {
-    const gridSize = 20;
-    const startX = Math.floor(-panOffset.x / gridSize) * gridSize;
-    const startY = Math.floor(-panOffset.y / gridSize) * gridSize;
-    const endX = startX + width / zoom + gridSize * 2;
-    const endY = startY + height / zoom + gridSize * 2;
+const drawInfiniteGrid = (ctx, width, height, panOffset, zoom) => {
+  const gridSize = 20;
+  
+  // Calculate the visible area in world coordinates
+  const startX = Math.floor((-panOffset.x) / gridSize) * gridSize;
+  const startY = Math.floor((-panOffset.y) / gridSize) * gridSize;
+  const endX = Math.ceil((width / zoom - panOffset.x) / gridSize) * gridSize;
+  const endY = Math.ceil((height / zoom - panOffset.y) / gridSize) * gridSize;
 
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 0.5 / zoom;
-    ctx.beginPath();
-    
-    for (let x = startX; x <= endX; x += gridSize) {
-      ctx.moveTo(x + panOffset.x, startY + panOffset.y);
-      ctx.lineTo(x + panOffset.x, endY + panOffset.y);
-    }
-    
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 0.5 / zoom;
+  ctx.beginPath();
+  
+  // Draw vertical lines
+  for (let x = startX; x <= endX; x += gridSize) {
+    ctx.moveTo(x + panOffset.x, startY + panOffset.y);
+    ctx.lineTo(x + panOffset.x, endY + panOffset.y);
+  }
+  
+  // Draw horizontal lines
+  for (let y = startY; y <= endY; y += gridSize) {
+    ctx.moveTo(startX + panOffset.x, y + panOffset.y);
+    ctx.lineTo(endX + panOffset.x, y + panOffset.y);
+  }
+  
+  ctx.stroke();
+  ctx.restore();
+};
+
+const drawInfiniteDots = (ctx, width, height, panOffset, zoom) => {
+  const gridSize = 30;
+  const dotSize = 1.5 / zoom;
+  
+  // Calculate the visible area in world coordinates
+  const startX = Math.floor((-panOffset.x) / gridSize) * gridSize;
+  const startY = Math.floor((-panOffset.y) / gridSize) * gridSize;
+  const endX = Math.ceil((width / zoom - panOffset.x) / gridSize) * gridSize;
+  const endY = Math.ceil((height / zoom - panOffset.y) / gridSize) * gridSize;
+
+  ctx.save();
+  ctx.fillStyle = bgColor === '#1e1e28' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)';
+  
+  for (let x = startX; x <= endX; x += gridSize) {
     for (let y = startY; y <= endY; y += gridSize) {
-      ctx.moveTo(startX + panOffset.x, y + panOffset.y);
-      ctx.lineTo(endX + panOffset.x, y + panOffset.y);
+      ctx.beginPath();
+      ctx.arc(x + panOffset.x, y + panOffset.y, dotSize, 0, Math.PI * 2);
+      ctx.fill();
     }
-    
-    ctx.stroke();
-    ctx.restore();
-  };
+  }
+  
+  ctx.restore();
+};
+
+const drawInfiniteLines = (ctx, width, height, panOffset, zoom) => {
+  const lineSpacing = 40;
+  
+  // Calculate the visible area in world coordinates
+  const startX = Math.floor((-panOffset.x) / lineSpacing) * lineSpacing;
+  const startY = Math.floor((-panOffset.y) / lineSpacing) * lineSpacing;
+  const endX = Math.ceil((width / zoom - panOffset.x) / lineSpacing) * lineSpacing;
+  const endY = Math.ceil((height / zoom - panOffset.y) / lineSpacing) * lineSpacing;
+
+  ctx.save();
+  ctx.strokeStyle = bgColor === '#1e1e28' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)';
+  ctx.lineWidth = 0.5 / zoom;
+  
+  // Draw horizontal lines only (for a cleaner look)
+  ctx.beginPath();
+  for (let y = startY; y <= endY; y += lineSpacing) {
+    ctx.moveTo(startX + panOffset.x, y + panOffset.y);
+    ctx.lineTo(endX + panOffset.x, y + panOffset.y);
+  }
+  ctx.stroke();
+  
+  ctx.restore();
+};
 
   const drawElement = (element, roughCanvas, ctx, panOffset, zoom) => {
     const options = {

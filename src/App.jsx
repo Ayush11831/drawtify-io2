@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Undo2, Redo2, Save, Trash2, PanelLeft, Download, ZoomIn, ZoomOut, Move, Grid3X3, Hand } from 'lucide-react';
+import { Undo2, Redo2, Save, Trash2, PanelLeft, Download, ZoomIn, ZoomOut, Move, Grid3X3, Hand, Circle, Minus, Square } from 'lucide-react';
 import './App.css';
 import Canvas from './components/Canvas';
 import Toolbar from './components/Toolbar';
@@ -11,7 +11,7 @@ function App() {
   const [tool, setTool] = useState('selection');
   const [color, setColor] = useState('#8b5cf6');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [showSidebar, setShowSidebar] = useState(false); // Changed to false by default
+  const [showSidebar, setShowSidebar] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [history, setHistory] = useState([]);
@@ -20,6 +20,8 @@ function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState(null);
+  const [bgColor, setBgColor] = useState('#1e1e28');
+  const [pattern, setPattern] = useState('grid');
   
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -280,13 +282,55 @@ function App() {
             </button>
           </div>
 
-          <button 
-            className={`icon-button dark-icon-button ${showGrid ? 'active' : ''}`} 
-            onClick={() => setShowGrid(!showGrid)}
-            title="Toggle Grid"
-          >
-            <Grid3X3 size={18} />
-          </button>
+          {/* Background color controls */}
+          <div className="toolbar-group mini-group">
+            <button 
+              className={`icon-button dark-icon-button ${bgColor === '#1e1e28' ? 'active' : ''}`} 
+              onClick={() => setBgColor('#1e1e28')}
+              title="Dark Background"
+              style={{ backgroundColor: '#1e1e28', width: '32px', height: '32px', borderRadius: '6px' }}
+            />
+            <button 
+              className={`icon-button dark-icon-button ${bgColor === '#ffffff' ? 'active' : ''}`} 
+              onClick={() => setBgColor('#ffffff')}
+              title="Light Background"
+              style={{ backgroundColor: '#ffffff', width: '32px', height: '32px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.2)' }}
+            />
+          </div>
+
+          {/* Pattern controls */}
+          <div className="toolbar-group mini-group">
+            <button 
+              className={`icon-button dark-icon-button ${pattern === 'grid' ? 'active' : ''}`} 
+              onClick={() => setPattern('grid')}
+              title="Grid Pattern"
+            >
+              <Grid3X3 size={16} />
+            </button>
+            <button 
+              className={`icon-button dark-icon-button ${pattern === 'dots' ? 'active' : ''}`} 
+              onClick={() => setPattern('dots')}
+              title="Dots Pattern"
+            >
+              <Circle size={16} />
+            </button>
+            <button 
+              className={`icon-button dark-icon-button ${pattern === 'lines' ? 'active' : ''}`} 
+              onClick={() => setPattern('lines')}
+              title="Line Pattern"
+            >
+              <Minus size={16} />
+            </button>
+            <button 
+              className={`icon-button dark-icon-button ${pattern === 'none' ? 'active' : ''}`} 
+              onClick={() => setPattern('none')}
+              title="No Pattern"
+            >
+              <Square size={16} />
+            </button>
+          </div>
+
+
 
           <button 
             className={`icon-button dark-icon-button ${showSidebar ? 'active' : ''}`} 
@@ -361,6 +405,8 @@ function App() {
               showGrid={showGrid}
               panOffset={panOffset}
               zoom={zoom}
+              bgColor={bgColor}
+              pattern={pattern}
             />
           </div>
         </div>
