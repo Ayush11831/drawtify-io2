@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Undo2, Redo2, Save, Trash2, PanelLeft, Download, ZoomIn, ZoomOut, Move, Grid3X3 } from 'lucide-react';
+import { Undo2, Redo2, Save, Trash2, PanelLeft, Download, ZoomIn, ZoomOut, Move, Grid3X3, Hand } from 'lucide-react';
 import './App.css';
 import Canvas from './components/Canvas';
 import Toolbar from './components/Toolbar';
 import Sidebar from './components/Sidebar';
-// import ExportModal from './components/ExportModal'; // Comment out until ExportModal is created
 
 function App() {
   const [elements, setElements] = useState([]);
@@ -12,16 +11,19 @@ function App() {
   const [tool, setTool] = useState('selection');
   const [color, setColor] = useState('#8b5cf6');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [showExportModal, setShowExportModal] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false); // Changed to false by default
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [visibleLayers, setVisibleLayers] = useState({});
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState(null);
   
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const canvasContainerRef = useRef(null);
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -121,16 +123,51 @@ function App() {
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.5));
   const handleZoomReset = () => setZoom(1);
 
+  // Pan handlers
+  const startPan = (e) => {
+    if (e.button === 1 || tool === 'hand' || (e.ctrlKey && e.button === 0)) {
+      e.preventDefault();
+      setIsPanning(true);
+      setLastPanPoint({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handlePan = (e) => {
+    if (!isPanning || !lastPanPoint) return;
+    
+    e.preventDefault();
+    
+    const dx = e.clientX - lastPanPoint.x;
+    const dy = e.clientY - lastPanPoint.y;
+    
+    setPanOffset(prev => ({
+      x: prev.x + dx,
+      y: prev.y + dy
+    }));
+    
+    setLastPanPoint({ x: e.clientX, y: e.clientY });
+  };
+
+  const stopPan = () => {
+    setIsPanning(false);
+    setLastPanPoint(null);
+  };
+
   // Layer management functions
   const handleElementSelect = (id) => {
     setSelectedElementId(id);
   };
 
   const handleDeleteElement = (id) => {
-    setElements(prev => prev.filter(el => el.id !== id));
+    setElements(prev => {
+      const newElements = prev.filter(el => el.id !== id);
+      return newElements;
+    });
+    
     if (selectedElementId === id) {
       setSelectedElementId(null);
     }
+    
     // Remove from visible layers
     setVisibleLayers(prev => {
       const newLayers = { ...prev };
@@ -205,12 +242,20 @@ function App() {
     setVisibleLayers(allHidden);
   };
 
+  const handleDeleteAllLayers = () => {
+    if (window.confirm('Delete all layers?')) {
+      setElements([]);
+      setVisibleLayers({});
+      setSelectedElementId(null);
+    }
+  };
+
   // Filter visible elements for canvas
   const visibleElements = elements.filter(el => visibleLayers[el.id] !== false);
 
   return (
-    <div className="app">
-      <header className="app-header">
+    <div className="app dark-theme">
+      <header className="app-header dark-header">
         <div className="logo-container">
           <svg className="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M7 8L3 12L7 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -218,36 +263,40 @@ function App() {
             <path d="M14 4L10 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <h1>Drawtify.io</h1>
-          <span className="badge">EPICS Project v2.0</span>
+          <span className="badge dark-badge">EPICS Project v2.0</span>
         </div>
         
         <div className="header-controls">
-          <div className="zoom-controls">
-            <button className="icon-button" onClick={handleZoomOut} title="Zoom Out">
+          <div className="zoom-controls dark-zoom-controls">
+            <button className="icon-button dark-icon-button" onClick={handleZoomOut} title="Zoom Out">
               <ZoomOut size={18} />
             </button>
-            <span className="zoom-level">{Math.round(zoom * 100)}%</span>
-            <button className="icon-button" onClick={handleZoomIn} title="Zoom In">
+            <span className="zoom-level dark-text">{Math.round(zoom * 100)}%</span>
+            <button className="icon-button dark-icon-button" onClick={handleZoomIn} title="Zoom In">
               <ZoomIn size={18} />
             </button>
-            <button className="icon-button" onClick={handleZoomReset} title="Reset Zoom">
+            <button className="icon-button dark-icon-button" onClick={handleZoomReset} title="Reset Zoom">
               <Move size={18} />
             </button>
           </div>
 
           <button 
-            className={`icon-button ${showGrid ? 'active' : ''}`} 
+            className={`icon-button dark-icon-button ${showGrid ? 'active' : ''}`} 
             onClick={() => setShowGrid(!showGrid)}
             title="Toggle Grid"
           >
             <Grid3X3 size={18} />
           </button>
 
-          <button className="icon-button" onClick={() => setShowSidebar(!showSidebar)} title="Toggle Sidebar">
+          <button 
+            className={`icon-button dark-icon-button ${showSidebar ? 'active' : ''}`} 
+            onClick={() => setShowSidebar(!showSidebar)} 
+            title="Toggle Sidebar"
+          >
             <PanelLeft size={18} />
           </button>
 
-          <button className="icon-button" onClick={() => fileInputRef.current.click()} title="Import">
+          <button className="icon-button dark-icon-button" onClick={() => fileInputRef.current.click()} title="Import">
             <Download size={18} />
           </button>
           <input
@@ -258,7 +307,7 @@ function App() {
             style={{ display: 'none' }}
           />
 
-          <button className="icon-button" onClick={() => handleSave('png')} title="Export PNG">
+          <button className="icon-button dark-icon-button" onClick={() => handleSave('png')} title="Export PNG">
             <Save size={18} />
           </button>
         </div>
@@ -279,16 +328,41 @@ function App() {
           canRedo={historyIndex < history.length - 1}
         />
         
-        <div className="canvas-container" style={{ transform: `scale(${zoom})` }}>
-          <Canvas
-            ref={canvasRef}
-            elements={visibleElements}
-            setElements={handleCanvasUpdate}
-            tool={tool}
-            color={color}
-            strokeWidth={strokeWidth}
-            showGrid={showGrid}
-          />
+        <div 
+          ref={canvasContainerRef}
+          className="canvas-container dark-canvas-container infinite-canvas"
+          style={{ 
+            cursor: isPanning ? 'grabbing' : (tool === 'hand' ? 'grab' : 'default')
+          }}
+          onMouseDown={startPan}
+          onMouseMove={handlePan}
+          onMouseUp={stopPan}
+          onMouseLeave={stopPan}
+        >
+          <div
+            className="canvas-transform-wrapper"
+            style={{
+              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+              transformOrigin: '0 0',
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0
+            }}
+          >
+            <Canvas
+              ref={canvasRef}
+              elements={visibleElements}
+              setElements={handleCanvasUpdate}
+              tool={tool}
+              color={color}
+              strokeWidth={strokeWidth}
+              showGrid={showGrid}
+              panOffset={panOffset}
+              zoom={zoom}
+            />
+          </div>
         </div>
 
         {showSidebar && (
@@ -304,26 +378,22 @@ function App() {
             onMoveDown={handleMoveDown}
             onShowAll={handleShowAllLayers}
             onHideAll={handleHideAllLayers}
+            onDeleteAll={handleDeleteAllLayers}
             selectedElementId={selectedElementId}
             visibleLayers={visibleLayers}
           />
         )}
-
-        {/* {showExportModal && (
-          <ExportModal
-            onClose={() => setShowExportModal(false)}
-            onExport={handleSave}
-            canvasRef={canvasRef}
-          />
-        )} */}
       </main>
 
-      <div className="status-bar">
+      <div className="status-bar dark-status-bar">
         <div className="status-item">
           <span>Elements: {elements.length}</span>
         </div>
         <div className="status-item">
           <span>Visible: {visibleElements.length}</span>
+        </div>
+        <div className="status-item">
+          <span>Hidden: {elements.length - visibleElements.length}</span>
         </div>
         <div className="status-item">
           <span>Tool: {tool.charAt(0).toUpperCase() + tool.slice(1)}</span>
@@ -333,6 +403,9 @@ function App() {
         </div>
         <div className="status-item">
           <span>Zoom: {Math.round(zoom * 100)}%</span>
+        </div>
+        <div className="status-item">
+          <span>Pos: ({Math.round(panOffset.x)}, {Math.round(panOffset.y)})</span>
         </div>
       </div>
     </div>

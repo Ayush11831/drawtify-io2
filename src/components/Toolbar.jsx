@@ -9,11 +9,11 @@ import {
   Undo2,
   Redo2,
   Trash2,
-  Palette,
-  Sliders
+  Sliders,
+  Hand
 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
-import './Toolbar.css'; // This import is correct
+import './Toolbar.css';
 
 const Toolbar = ({ 
   tool, 
@@ -36,7 +36,8 @@ const Toolbar = ({
     { id: 'ellipse', icon: Circle, label: 'Ellipse (E)' },
     { id: 'line', icon: Minus, label: 'Line (L)' },
     { id: 'arrow', icon: ArrowUp, label: 'Arrow (A)' },
-    { id: 'freehand', icon: Pencil, label: 'Freehand (F)' }
+    { id: 'freehand', icon: Pencil, label: 'Freehand (F)' },
+    { id: 'hand', icon: Hand, label: 'Pan (H)' }
   ];
 
   // Keyboard shortcuts
@@ -51,6 +52,7 @@ const Toolbar = ({
         case 'l': setTool('line'); break;
         case 'a': setTool('arrow'); break;
         case 'f': setTool('freehand'); break;
+        case 'h': setTool('hand'); break;
         case 'z': if (e.ctrlKey || e.metaKey) { e.preventDefault(); onUndo(); } break;
         case 'y': if (e.ctrlKey || e.metaKey) { e.preventDefault(); onRedo(); } break;
         default: break;

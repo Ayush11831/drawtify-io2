@@ -2,20 +2,30 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
+  background: #1a1a24;
+  color: #fff;
+}
+
+.app.dark-theme {
+  background: #1a1a24;
 }
 
 .app-header {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(30, 30, 40, 0.98);
   backdrop-filter: blur(10px);
   padding: 0.75rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 100;
+}
+
+.app-header.dark-header {
+  background: rgba(30, 30, 40, 0.98);
+  color: #fff;
 }
 
 .logo-container {
@@ -66,9 +76,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.3);
   padding: 4px;
   border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.zoom-controls.dark-zoom-controls {
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .zoom-level {
@@ -76,7 +91,11 @@
   text-align: center;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #4a5568;
+  color: #fff;
+}
+
+.zoom-level.dark-text {
+  color: #fff;
 }
 
 .icon-button {
@@ -85,16 +104,20 @@
   padding: 8px;
   cursor: pointer;
   border-radius: 8px;
-  color: #4a5568;
+  color: #a0aec0;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.icon-button.dark-icon-button {
+  color: #a0aec0;
+}
+
 .icon-button:hover {
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.2);
+  color: #fff;
   transform: translateY(-1px);
 }
 
@@ -112,30 +135,50 @@
   flex: 1;
   overflow: hidden;
   position: relative;
+  background: #1a1a24;
 }
 
 .canvas-container {
   flex: 1;
   position: relative;
-  background: #f8fafc;
-  border-radius: 16px;
-  margin: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  background: #1e1e28;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
   overflow: hidden;
   transition: transform 0.2s ease;
   transform-origin: center;
 }
 
+.canvas-container.dark-canvas-container {
+  background: #1e1e28;
+}
+
+.canvas-container.infinite-canvas {
+  cursor: default;
+  overflow: hidden;
+}
+
+.canvas-transform-wrapper {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
 .status-bar {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(30, 30, 40, 0.98);
   backdrop-filter: blur(10px);
   padding: 0.5rem 2rem;
   display: flex;
   gap: 24px;
   font-size: 0.85rem;
-  color: #4a5568;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  color: #a0aec0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 90;
+}
+
+.status-bar.dark-status-bar {
+  background: rgba(30, 30, 40, 0.98);
+  color: #a0aec0;
 }
 
 .status-item {
@@ -171,6 +214,15 @@
   to { transform: rotate(360deg); }
 }
 
+/* Grid styles for infinite canvas */
+.infinite-canvas {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: center center;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .app-header {
@@ -184,7 +236,7 @@
   }
 
   .canvas-container {
-    margin: 10px;
+    margin: 0;
   }
 
   .status-bar {

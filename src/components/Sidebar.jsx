@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   X, Layers, Eye, EyeOff, Trash2, Copy, Lock, Unlock, 
-  ArrowUp, ArrowDown, Grid, Type, Square, Circle, Minus, 
+  ArrowUp, ArrowDown, Grid, Square, Circle, Minus, 
   ArrowUp as ArrowIcon, Pencil 
 } from 'lucide-react';
 import './Sidebar.css';
@@ -18,7 +18,9 @@ const Sidebar = ({
   onMoveDown,
   onShowAll,
   onHideAll,
-  selectedElementId 
+  onDeleteAll,
+  selectedElementId,
+  visibleLayers
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -45,16 +47,15 @@ const Sidebar = ({
   };
 
   const filteredElements = elements.filter(element => {
-    const matchesSearch = element.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (element.name && element.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (element.name || element.type).toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || element.type === filterType;
     return matchesSearch && matchesFilter;
   });
 
   const stats = {
     total: elements.length,
-    visible: elements.filter(el => el.visible !== false).length,
-    hidden: elements.filter(el => el.visible === false).length,
+    visible: elements.filter(el => visibleLayers[el.id] !== false).length,
+    hidden: elements.filter(el => visibleLayers[el.id] === false).length,
     locked: elements.filter(el => el.locked).length
   };
 
@@ -147,14 +148,14 @@ const Sidebar = ({
 
                 <div className="layer-actions">
                   <button 
-                    className={`layer-action ${element.visible === false ? 'inactive' : ''}`}
+                    className={`layer-action ${visibleLayers[element.id] === false ? 'inactive' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleVisibility?.(element.id);
                     }}
-                    title={element.visible === false ? 'Show' : 'Hide'}
+                    title={visibleLayers[element.id] === false ? 'Show' : 'Hide'}
                   >
-                    {element.visible === false ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {visibleLayers[element.id] === false ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                   
                   <button 
@@ -199,7 +200,7 @@ const Sidebar = ({
                       onMoveDown?.(element.id);
                     }}
                     title="Move Down"
-                    disabled={index === elements.length - 1 || element.locked}
+                    disabled={index === filteredElements.length - 1 || element.locked}
                   >
                     <ArrowDown size={16} />
                   </button>
@@ -208,9 +209,7 @@ const Sidebar = ({
                     className="layer-action delete"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (window.confirm('Delete this layer?')) {
-                        onDeleteElement?.(element.id);
-                      }
+                      onDeleteElement?.(element.id);
                     }}
                     title="Delete"
                     disabled={element.locked}
@@ -239,11 +238,7 @@ const Sidebar = ({
             <EyeOff size={16} />
             Hide All
           </button>
-          <button className="footer-button danger" onClick={() => {
-            if (window.confirm('Delete all layers?')) {
-              elements.forEach(el => onDeleteElement?.(el.id));
-            }
-          }} title="Delete all layers">
+          <button className="footer-button danger" onClick={onDeleteAll} title="Delete all layers">
             <Trash2 size={16} />
             Clear All
           </button>

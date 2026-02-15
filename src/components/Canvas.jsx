@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react';
 import rough from 'roughjs';
 
-const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, showGrid }, ref) => {
+const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, showGrid, panOffset, zoom }, ref) => {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const roughCanvasRef = useRef(null);
@@ -12,7 +12,6 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current,
     getSVG: () => {
-      // Generate SVG from elements
       let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize.width}" height="${canvasSize.height}" viewBox="0 0 ${canvasSize.width} ${canvasSize.height}">`;
       elements.forEach(element => {
         if (element.type === 'rectangle') {
@@ -36,12 +35,14 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
     roughCanvasRef.current = rough.canvas(canvas);
 
     const resizeCanvas = () => {
-      const container = canvas.parentElement;
+      const container = canvas.parentElement?.parentElement;
       if (container) {
         const { width, height } = container.getBoundingClientRect();
         setCanvasSize({ width, height });
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = width * 2;
+        canvas.height = height * 2;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
         drawCanvas();
       }
     };
@@ -59,50 +60,57 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
 
     if (!ctx || !roughCanvas) return;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.scale(2, 2);
 
-    // Draw grid if enabled
     if (showGrid) {
-      drawGrid(ctx, canvas.width, canvas.height);
+      drawInfiniteGrid(ctx, canvas.width / 2, canvas.height / 2, panOffset, zoom);
     }
 
-    // Draw all elements with stabilization
     elements.forEach(element => {
-      drawElement(element, roughCanvas, ctx);
+      drawElement(element, roughCanvas, ctx, panOffset, zoom);
     });
+
+    ctx.restore();
   };
 
-  // Draw grid
-  const drawGrid = (ctx, width, height) => {
+  const drawInfiniteGrid = (ctx, width, height, panOffset, zoom) => {
     const gridSize = 20;
+    const startX = Math.floor(-panOffset.x / gridSize) * gridSize;
+    const startY = Math.floor(-panOffset.y / gridSize) * gridSize;
+    const endX = startX + width / zoom + gridSize * 2;
+    const endY = startY + height / zoom + gridSize * 2;
+
     ctx.save();
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 0.5 / zoom;
     ctx.beginPath();
     
-    for (let x = 0; x <= width; x += gridSize) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
+    for (let x = startX; x <= endX; x += gridSize) {
+      ctx.moveTo(x + panOffset.x, startY + panOffset.y);
+      ctx.lineTo(x + panOffset.x, endY + panOffset.y);
     }
     
-    for (let y = 0; y <= height; y += gridSize) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
+    for (let y = startY; y <= endY; y += gridSize) {
+      ctx.moveTo(startX + panOffset.x, y + panOffset.y);
+      ctx.lineTo(endX + panOffset.x, y + panOffset.y);
     }
     
     ctx.stroke();
     ctx.restore();
   };
 
-  // Draw single element with stabilization
-  const drawElement = (element, roughCanvas, ctx) => {
+  const drawElement = (element, roughCanvas, ctx, panOffset, zoom) => {
     const options = {
       stroke: element.color,
       strokeWidth: element.strokeWidth,
       roughness: 1,
-      seed: element.seed || Math.random() // Add seed for stability
+      seed: element.seed || Math.random()
     };
+
+    ctx.save();
+    ctx.translate(panOffset.x, panOffset.y);
 
     switch (element.type) {
       case 'rectangle':
@@ -143,9 +151,10 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
       default:
         break;
     }
+
+    ctx.restore();
   };
 
-  // Draw arrow head
   const drawArrowHead = (ctx, x, y, fromX, fromY, color, size) => {
     const angle = Math.atan2(y - fromY, x - fromX);
     const arrowSize = size * 1.5;
@@ -163,38 +172,45 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
     ctx.restore();
   };
 
-  // Redraw when elements, grid, or color change
   useEffect(() => {
     drawCanvas();
-  }, [elements, showGrid, color, strokeWidth, canvasSize]);
+  }, [elements, showGrid, color, strokeWidth, panOffset, zoom, canvasSize]);
 
   const startDrawing = (e) => {
-    if (tool === 'selection') return;
+    if (tool === 'selection' || tool === 'hand') return;
     
     isDrawing.current = true;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvasRef.current.width / rect.width / 2;
+    const scaleY = canvasRef.current.height / rect.height / 2;
+    
+    const x = (e.clientX - rect.left) * scaleX - panOffset.x;
+    const y = (e.clientY - rect.top) * scaleY - panOffset.y;
 
     startPoint.current = { x, y };
 
     if (tool === 'freehand') {
-      setElements([...elements, {
+      const newElement = {
+        id: Date.now() + Math.random() + Math.random(),
         type: 'freehand',
         points: [{ x, y }],
         color,
         strokeWidth,
         seed: Math.random()
-      }]);
+      };
+      setElements([...elements, newElement]);
     }
   };
 
   const draw = (e) => {
-    if (!isDrawing.current || tool === 'selection') return;
+    if (!isDrawing.current || tool === 'selection' || tool === 'hand') return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvasRef.current.width / rect.width / 2;
+    const scaleY = canvasRef.current.height / rect.height / 2;
+    
+    const x = (e.clientX - rect.left) * scaleX - panOffset.x;
+    const y = (e.clientY - rect.top) * scaleY - panOffset.y;
 
     if (tool === 'freehand') {
       const lastElement = elements[elements.length - 1];
@@ -207,17 +223,20 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
         setElements(newElements);
       }
     } else {
-      // Preview for shapes
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
       const roughCanvas = roughCanvasRef.current;
       
-      // Clear and redraw everything
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (showGrid) drawGrid(ctx, canvas.width, canvas.height);
-      elements.forEach(element => drawElement(element, roughCanvas, ctx));
+      ctx.save();
+      ctx.scale(2, 2);
       
-      // Draw preview
+      if (showGrid) drawInfiniteGrid(ctx, canvas.width / 2, canvas.height / 2, panOffset, zoom);
+      elements.forEach(element => drawElement(element, roughCanvas, ctx, panOffset, zoom));
+      
+      ctx.save();
+      ctx.translate(panOffset.x, panOffset.y);
+      
       const previewElement = {
         type: tool,
         x: startPoint.current.x,
@@ -236,19 +255,25 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
         previewElement.y2 = y;
       }
 
-      drawElement(previewElement, roughCanvas, ctx);
+      drawElement(previewElement, roughCanvas, ctx, { x: 0, y: 0 }, zoom);
+      ctx.restore();
+      ctx.restore();
     }
   };
 
   const stopDrawing = (e) => {
-    if (!isDrawing.current || tool === 'selection') return;
+    if (!isDrawing.current || tool === 'selection' || tool === 'hand') return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvasRef.current.width / rect.width / 2;
+    const scaleY = canvasRef.current.height / rect.height / 2;
+    
+    const x = (e.clientX - rect.left) * scaleX - panOffset.x;
+    const y = (e.clientY - rect.top) * scaleY - panOffset.y;
 
     if (tool !== 'freehand' && startPoint.current) {
       const newElement = {
+        id: Date.now() + Math.random() + Math.random(),
         type: tool,
         x: startPoint.current.x,
         y: startPoint.current.y,
@@ -256,7 +281,7 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
         height: y - startPoint.current.y,
         color,
         strokeWidth,
-        seed: Math.random() // Add seed for stability
+        seed: Math.random()
       };
 
       if (tool === 'line' || tool === 'arrow') {
@@ -285,8 +310,8 @@ const Canvas = forwardRef(({ elements, setElements, tool, color, strokeWidth, sh
         width: '100%',
         height: '100%',
         display: 'block',
-        cursor: tool === 'selection' ? 'default' : 'crosshair',
-        touchAction: 'none' // Prevent scrolling on touch devices
+        cursor: tool === 'selection' ? 'default' : (tool === 'hand' ? 'grab' : 'crosshair'),
+        touchAction: 'none'
       }}
     />
   );
